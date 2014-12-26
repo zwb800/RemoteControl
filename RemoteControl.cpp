@@ -1,21 +1,23 @@
 #include "RemoteControl.h"
 
 volatile boolean RemoteControl::ready;
-uint8_t RemoteControl::timings[REMOTECONTROL_MAX_CHANGE];
+uint16_t RemoteControl::timings[REMOTECONTROL_MAX_CHANGE+1];
 volatile uint32_t RemoteControl::data;
 
 
 void RemoteControl::begin()
 {
-	begin(0);
+	begin(0,11);
 }
 
 
-void RemoteControl::begin(int num)
+void RemoteControl::begin(int num,int pinSend)
 {
 	data = 0;
 	ready = false;
-
+	this->pinSend = pinSend;
+	pinMode(this->pinSend,OUTPUT);
+	
 	attachInterrupt(num, interrupt, CHANGE);
 }
 
@@ -23,7 +25,7 @@ void RemoteControl::interrupt()
 {
 	static uint8_t changeIndex = 0;
 	static unsigned long lastTime = 0;
-
+	
 	if (ready)
 	{
 		return;
@@ -33,19 +35,21 @@ void RemoteControl::interrupt()
 	unsigned int length = now - lastTime;
 	lastTime = now;
 
-	if (length > 8000 && length <20000)//过滤掉过长或过短的脉冲
+	if (length > 13000 && length <16000)//过滤掉过长或过短的脉冲
 	{
-		if (changeIndex == REMOTECONTROL_MAX_CHANGE)//收集到正确的脉冲数
+		
+		if (changeIndex == 1+REMOTECONTROL_MAX_CHANGE)//收集到正确的脉冲数 一共有50个脉冲 第一个同步脉冲 48个数据脉冲 最后一个同步脉冲
 		{
+			
 			ready = receive();
 		}
 
 		changeIndex = 0;
 	}
 
-	if (changeIndex >= REMOTECONTROL_MAX_CHANGE)//脉冲数超出 直接返回 等待下次长脉冲
+	if (changeIndex > REMOTECONTROL_MAX_CHANGE)//脉冲数超出 直接返回 等待下次长脉冲
 	{
-		changeIndex = 1000;//附一个无效值
+		changeIndex = 100;//附一个无效值
 		return;
 	}
 
@@ -54,17 +58,21 @@ void RemoteControl::interrupt()
 
 boolean RemoteControl::receive()
 {
-	uint8_t pulseWidth = timings[0] / 31;//脉冲宽度
-	uint8_t max1 = TOLERANCE + pulseWidth;
-	uint8_t min1 = TOLERANCE - pulseWidth;
-	uint8_t max2 = TOLERANCE + pulseWidth * 3;
-	uint8_t min2 = TOLERANCE - pulseWidth * 3;
+	int pulseWidth = timings[0] / 31;//脉冲宽度
+	int t = TOLERANCE;
+	int max1 = t + pulseWidth;
+	int min1 = t - pulseWidth;
+	int max2 = t + pulseWidth * 3;
+	int min2 = t - pulseWidth * 3;
 
-	for (int i = 0; i < REMOTECONTROL_MAX_CHANGE; i+=2)
+	data = 0;
+	
+	for (int i = 1; i < REMOTECONTROL_MAX_CHANGE; i+=2)
 	{
-		uint8_t t1 = timings[i];
-		uint8_t t2 = timings[i+1];		
-
+		int t1 = timings[i];
+		int t2 = timings[i+1];		
+		
+		
 		if (t1 < max1 && t1 > min1 &&
 			t2 < max2 && t2 > min2)
 		{
@@ -74,7 +82,7 @@ boolean RemoteControl::receive()
 			t2 < max1 && t2 > min1)
 		{
 			//1
-			data |= 1;
+			data|=1;
 		}
 		else
 		{
@@ -85,7 +93,9 @@ boolean RemoteControl::receive()
 
 		data = data << 1;
 	}
-
+	
+	data = data >>1;
+	
 	return data > 0;
 }
 
@@ -96,5 +106,57 @@ boolean RemoteControl::available()
 
 uint32_t RemoteControl::getData()
 {
+	ready = false;
 	return data;
+}
+
+void RemoteControl::send(String code)
+{
+	int pls = 460;
+  
+  for(int i=0;i<4;i++)
+  {
+			sendSync(pls);
+  
+      int j = 0;
+      char c = code[j++];
+      
+      while(c!='\0')
+      {
+          if(c=='0')
+          {
+             send0(pls);
+          }
+          else
+          {
+             send1(pls);
+          }
+          
+          c = code[j++];
+      }
+  }
+}
+
+void RemoteControl::send0(int pls)
+{
+		digitalWrite(pinSend,HIGH);
+		delayMicroseconds(pls);
+		digitalWrite(pinSend,LOW);
+		delayMicroseconds(pls*3);
+}
+
+void RemoteControl::send1(int pls)
+{
+		digitalWrite(pinSend,HIGH);
+		delayMicroseconds(pls*3);
+		digitalWrite(pinSend,LOW);
+		delayMicroseconds(pls);
+}
+
+void RemoteControl::sendSync(int pls)
+{
+		digitalWrite(pinSend,HIGH);
+		delayMicroseconds(pls);
+		digitalWrite(pinSend,LOW);
+		delayMicroseconds(pls*31);
 }

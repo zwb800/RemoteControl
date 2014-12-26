@@ -14,14 +14,19 @@ class RemoteControl
 {
 public:
 	void begin();
-	void begin(int num);
+	void begin(int num,int pinSend);
 	boolean available();
 	uint32_t getData();
+	void send(String code);
 private:
 	static void interrupt();
 	static boolean receive();
-	static uint8_t timings[REMOTECONTROL_MAX_CHANGE];
+	static uint16_t timings[1+REMOTECONTROL_MAX_CHANGE];
 	static volatile boolean ready;
 	static volatile uint32_t data;
+	void send0(int pls);
+	void send1(int pls);
+	void sendSync(int pls);
+	int pinSend;
 };
 #endif
