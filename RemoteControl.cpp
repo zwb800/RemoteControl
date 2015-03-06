@@ -7,7 +7,7 @@ volatile uint32_t RemoteControl::data;
 
 void RemoteControl::begin()
 {
-	begin(0,11);
+	begin(0,3);
 }
 
 
@@ -113,10 +113,9 @@ uint32_t RemoteControl::getData()
 void RemoteControl::send(String code)
 {
 	int pls = 460;
-  
   for(int i=0;i<4;i++)
   {
-			sendSync(pls);
+	  sendSync(pls);
   
       int j = 0;
       char c = code[j++];
@@ -133,6 +132,45 @@ void RemoteControl::send(String code)
           }
           
           c = code[j++];
+      }
+	  
+  }
+}
+
+void RemoteControl::send(uint32_t data)
+{
+	int len = 24;
+	uint32_t data_hi = data >> 15;
+	int pls = 460;
+  
+  for(int i=0;i<4;i++)
+  {
+	  sendSync(pls);
+  
+      for(int j= len - 15 - 1;j>-1;j--)
+	  {
+		  boolean c = (data_hi & (1<<j))>>j;
+          if(c==0)
+          {
+             send0(pls);
+          }
+          else
+          {
+             send1(pls);
+          }
+      }
+
+	  for(int j= 15 - 1;j>-1;j--)
+	  {
+		boolean c = (data & (1<<j))>>j;
+		if(c==0)
+        {
+             send0(pls);
+        }
+        else
+        {
+           send1(pls);
+        }
       }
   }
 }

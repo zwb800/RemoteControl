@@ -3,8 +3,7 @@ RemoteControl RC;
 void setup()
 {
     RC.begin();
-    Serial.begin(9600);
-    pinMode(13,OUTPUT);
+    Serial.begin(115200);
 }
 
 void loop()

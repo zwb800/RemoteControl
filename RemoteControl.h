@@ -18,6 +18,7 @@ public:
 	boolean available();
 	uint32_t getData();
 	void send(String code);
+	void send(uint32_t data);
 private:
 	static void interrupt();
 	static boolean receive();
