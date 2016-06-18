@@ -140,29 +140,15 @@ void RemoteControl::send(String code)
 void RemoteControl::send(uint32_t data)
 {
 	int len = 24;
-	uint32_t data_hi = data >> 15;
 	int pls = 460;
   
   for(int i=0;i<4;i++)
   {
 	  sendSync(pls);
-  
-      for(int j= len - 15 - 1;j>-1;j--)
-	  {
-		  boolean c = (data_hi & (1<<j))>>j;
-          if(c==0)
-          {
-             send0(pls);
-          }
-          else
-          {
-             send1(pls);
-          }
-      }
 
-	  for(int j= 15 - 1;j>-1;j--)
+	  for(int j= 24 - 1;j>-1;j--)
 	  {
-		boolean c = (data & (1<<j))>>j;
+		uint32_t c = data & (1L<<j);
 		if(c==0)
         {
              send0(pls);
